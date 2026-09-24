@@ -1,6 +1,7 @@
 package com.fleetflow.dto.request;
 
 import com.fleetflow.entity.VehicleType;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -17,6 +18,10 @@ public class CreateTripRequest {
 
     @NotNull
     private VehicleType vehicleType;
+
+    @NotNull
+    @DecimalMin(value = "0.1", message = "Distance must be greater than 0")
+    private Double distanceKm;
 
     public Long getCustomerId() {
         return customerId;
@@ -48,5 +53,13 @@ public class CreateTripRequest {
 
     public void setVehicleType(VehicleType vehicleType) {
         this.vehicleType = vehicleType;
+    }
+
+    public Double getDistanceKm() {
+        return distanceKm;
+    }
+
+    public void setDistanceKm(Double distanceKm) {
+        this.distanceKm = distanceKm;
     }
 }

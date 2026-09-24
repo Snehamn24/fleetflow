@@ -21,8 +21,14 @@ public class TripController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Trip createTrip(@Valid @RequestBody CreateTripRequest request) {
-        return tripService.createTrip(request);
+    public Trip createTrip(
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody CreateTripRequest request) {
+
+        return tripService.createTrip(
+                request,
+                idempotencyKey
+        );
     }
 
     @GetMapping
@@ -36,7 +42,9 @@ public class TripController {
     }
 
     @GetMapping("/customer/{customerId}")
-    public List<Trip> getTripsByCustomer(@PathVariable Long customerId) {
+    public List<Trip> getTripsByCustomer(
+            @PathVariable Long customerId) {
+
         return tripService.getTripsByCustomer(customerId);
     }
 

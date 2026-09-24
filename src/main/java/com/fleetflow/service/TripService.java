@@ -11,8 +11,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TripService {
@@ -21,23 +27,55 @@ public class TripService {
     private final CustomerRepository customerRepository;
     private final VehicleRepository vehicleRepository;
     private final DriverRepository driverRepository;
+    private final FareService fareService;
 
     public TripService(
             TripRepository tripRepository,
             CustomerRepository customerRepository,
             VehicleRepository vehicleRepository,
-            DriverRepository driverRepository) {
+            DriverRepository driverRepository,
+            FareService fareService) {
 
         this.tripRepository = tripRepository;
         this.customerRepository = customerRepository;
         this.vehicleRepository = vehicleRepository;
         this.driverRepository = driverRepository;
+        this.fareService = fareService;
     }
 
     @Transactional
-    public Trip createTrip(CreateTripRequest request) {
+    public Trip createTrip(
+            CreateTripRequest request,
+            String idempotencyKey) {
 
-        Customer customer = customerRepository.findById(request.getCustomerId())
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Idempotency-Key header is required"
+            );
+        }
+
+        String fingerprint = generateFingerprint(request);
+
+        Optional<Trip> existingTrip =
+                tripRepository.findByIdempotencyKey(idempotencyKey);
+
+        if (existingTrip.isPresent()) {
+
+            Trip trip = existingTrip.get();
+
+            if (!fingerprint.equals(trip.getRequestFingerprint())) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Idempotency key has already been used with a different request"
+                );
+            }
+
+            return trip;
+        }
+
+        Customer customer = customerRepository
+                .findById(request.getCustomerId())
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
@@ -63,6 +101,12 @@ public class TripService {
         vehicleRepository.save(vehicle);
         driverRepository.save(driver);
 
+        BigDecimal fareAmount =
+                fareService.calculateFare(
+                        request.getVehicleType(),
+                        request.getDistanceKm()
+                );
+
         Trip trip = new Trip();
 
         trip.setCustomer(customer);
@@ -70,8 +114,13 @@ public class TripService {
         trip.setDriver(driver);
         trip.setPickup(request.getPickup());
         trip.setDestination(request.getDestination());
+        trip.setDistanceKm(request.getDistanceKm());
+        trip.setFareAmount(fareAmount);
         trip.setStatus(TripStatus.CONFIRMED);
         trip.setCreatedAt(LocalDateTime.now());
+
+        trip.setIdempotencyKey(idempotencyKey);
+        trip.setRequestFingerprint(fingerprint);
 
         return tripRepository.save(trip);
     }
@@ -160,5 +209,35 @@ public class TripService {
 
         vehicleRepository.save(vehicle);
         driverRepository.save(driver);
+    }
+
+    private String generateFingerprint(CreateTripRequest request) {
+
+        String data =
+                request.getCustomerId() + "|" +
+                        request.getPickup().trim() + "|" +
+                        request.getDestination().trim() + "|" +
+                        request.getVehicleType().name() + "|" +
+                        request.getDistanceKm();
+
+        try {
+
+            MessageDigest digest =
+                    MessageDigest.getInstance("SHA-256");
+
+            byte[] hash =
+                    digest.digest(
+                            data.getBytes(StandardCharsets.UTF_8)
+                    );
+
+            return HexFormat.of().formatHex(hash);
+
+        } catch (NoSuchAlgorithmException exception) {
+
+            throw new IllegalStateException(
+                    "Unable to generate request fingerprint",
+                    exception
+            );
+        }
     }
 }
