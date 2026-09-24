@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FleetFlow</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>FleetFlow</h1>
+    <p class="subtitle">Transportation Booking Dashboard</p>
+
+    <div class="card">
+
+        <h2>Book a Trip</h2>
+
+        <label>Customer ID</label>
+        <input type="number" id="customerId" value="1">
+
+        <label>Pickup</label>
+        <input type="text" id="pickup" placeholder="Enter pickup location">
+
+        <label>Destination</label>
+        <input type="text" id="destination" placeholder="Enter destination">
+
+        <label>Vehicle Type</label>
+        <select id="vehicleType">
+            <option value="CAB">CAB</option>
+            <option value="AUTO">AUTO</option>
+            <option value="BIKE">BIKE</option>
+        </select>
+
+        <label>Distance (km)</label>
+        <input type="number" id="distanceKm" step="0.1">
+
+        <label>Idempotency Key</label>
+        <input type="text" id="idempotencyKey" value="DEMO-001">
+
+        <button onclick="bookTrip()">Book Trip</button>
+
+    </div>
+
+    <div class="card">
+
+        <h2>Trip Details</h2>
+
+        <div id="tripResult">
+            No trip created yet.
+        </div>
+
+    </div>
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
