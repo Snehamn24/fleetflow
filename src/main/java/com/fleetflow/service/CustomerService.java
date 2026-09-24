@@ -33,4 +33,14 @@ public class CustomerService {
                                 "Customer not found with id: " + id
                         ));
     }
+
+    public Customer updateCustomer(Long id, Customer updatedCustomer) {
+        Customer existingCustomer = getCustomerById(id);
+
+        existingCustomer.setName(updatedCustomer.getName());
+        existingCustomer.setEmail(updatedCustomer.getEmail());
+        existingCustomer.setPhone(updatedCustomer.getPhone());
+
+        return customerRepository.save(existingCustomer);
+    }
 }
